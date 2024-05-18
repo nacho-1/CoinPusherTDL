@@ -7,17 +7,27 @@ const ASK_KEY: char = 'y';
 const QUIT_KEY: char = 'q';
 
 fn main() {
-    let option = read_option().unwrap_or_else(|err| {
-        eprintln!("Error leyendo la opción: {err}");
+    if let Err(e) = run() {
+        eprintln!("Error corriendo la aplicación: {e}");
         process::exit(1);
-    });
+    }
+}
 
-    println!("La opción elegida es: {option}");
+fn run() -> Result<(), Box<dyn Error>> {
+    loop {
+        let option = read_option()?;
+        match option {
+            QUIT_KEY => return Ok(()),
+            INSERT_KEY => println!("Insertó una moneda\n"),
+            ASK_KEY => println!("Hay N monedas\n"),
+            other => println!("[{other}] no es una opción válida\n"),
+        }
+    }
 }
 
 fn read_option() -> Result<char, Box<dyn Error>> {
     loop {
-        println!("Ingresá una accion:");
+        println!("Ingrese una accion:");
         println!(" {INSERT_KEY} : Ingresar moneda");
         println!(" {ASK_KEY} : Consultar cantidad");
         println!(" {QUIT_KEY} : Salir");
@@ -29,7 +39,7 @@ fn read_option() -> Result<char, Box<dyn Error>> {
         let trimmed_input = input.trim();
 
         if trimmed_input.len() != 1 {
-            println!("Opción invalida. Intente nuevamente\n");
+            println!("Ingrese solamente un caracter\n");
             continue;
         }
 
