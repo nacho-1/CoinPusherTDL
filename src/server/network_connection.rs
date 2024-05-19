@@ -58,16 +58,16 @@ impl<S, I> NetworkConnection<S, I> {
     }
 
     pub fn close(&mut self) -> io::Result<()>
-        where
-            S: Close,
+    where
+        S: Close,
     {
         self.stream.close()
     }
 
     pub fn try_clone(&self) -> ServerResult<Self>
-        where
-            I: Clone + Copy,
-            S: TryClone,
+    where
+        I: Clone + Copy,
+        S: TryClone,
     {
         let stream = self.stream.try_clone().map_err(|e| {
             ServerError::new_kind(

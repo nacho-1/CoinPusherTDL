@@ -52,7 +52,6 @@ impl From<io::Error> for ServerError {
     }
 }
 
-
 impl<T> From<PoisonError<T>> for ServerError {
     fn from(err: PoisonError<T>) -> Self {
         ServerError::new_kind(&err.to_string(), ServerErrorKind::PoisonedLock)

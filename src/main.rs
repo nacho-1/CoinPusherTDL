@@ -1,8 +1,8 @@
 mod server;
 
+use std::error::Error;
 use std::io;
 use std::process;
-use std::error::Error;
 
 const INSERT_KEY: char = 't';
 const ASK_KEY: char = 'y';

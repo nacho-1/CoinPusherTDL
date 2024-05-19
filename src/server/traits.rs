@@ -10,8 +10,8 @@ pub trait Close {
 
 pub trait TryClone {
     fn try_clone(&self) -> io::Result<Self>
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 pub trait Interrupt {
@@ -20,11 +20,10 @@ pub trait Interrupt {
     fn sleep(&mut self) -> io::Result<()>;
 }
 
-
 impl TryClone for TcpStream {
     fn try_clone(&self) -> io::Result<Self>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         TcpStream::try_clone(self)
     }
@@ -53,5 +52,4 @@ pub trait Config: Send + Sync + Clone + 'static {
     fn port(&self) -> u16;
 
     fn ip(&self) -> &str;
-
 }

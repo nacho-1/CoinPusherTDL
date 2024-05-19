@@ -40,8 +40,8 @@ impl ThreadJoiner {
     }
 
     pub fn spawn<F>(&mut self, action: F)
-        where
-            F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
     {
         let sender_clone = self.finished_sender.clone();
         let handle = thread::spawn(move || {
@@ -93,16 +93,16 @@ impl Drop for ThreadJoiner {
             });
 
         let joiner_thread_id = self.joiner_thread_handle.as_ref().unwrap().thread().id();
-        println!("Joining helper thread from ThreadJoiner{:?}", joiner_thread_id);
+        println!(
+            "Joining helper thread from ThreadJoiner{:?}",
+            joiner_thread_id
+        );
         self.joiner_thread_handle
             .take()
             .expect("Joiner thread handle is None")
             .join()
             .unwrap_or_else(|e| {
-                eprintln!(
-                    "{:?} - Thread joined with panic: {:?}",
-                    joiner_thread_id, e
-                );
+                eprintln!("{:?} - Thread joined with panic: {:?}", joiner_thread_id, e);
             });
     }
 }
@@ -117,7 +117,6 @@ impl Drop for ThreadGuard {
     fn drop(&mut self) {
         println!("ThreadGuard drop: {:?}", self.id);
 
-        self.sender
-            .send(Message::Finished(self.id)).unwrap_or(());
+        self.sender.send(Message::Finished(self.id)).unwrap_or(());
     }
 }

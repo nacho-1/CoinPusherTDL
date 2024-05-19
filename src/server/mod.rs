@@ -1,21 +1,21 @@
-use std::{io, thread};
-use std::net::{TcpListener, TcpStream};
+use crate::server::network_connection::NetworkConnection;
 use std::net::SocketAddr;
-use std::sync::{Arc, mpsc, Mutex};
+use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
-use crate::server::network_connection::NetworkConnection;
+use std::{io, thread};
 
 use crate::server::server_controller::ServerController;
 use crate::server::server_error::{ServerError, ServerErrorKind};
 
+use crate::server::traits::Config;
 use thread_joiner::ThreadJoiner;
 use threadpool::ThreadPool;
-use crate::server::traits::Config;
 
-mod server_controller;
 mod network_connection;
+mod server_controller;
 mod server_error;
 mod traits;
 
@@ -24,16 +24,16 @@ pub type ServerResult<T> = Result<T, ServerError>;
 const CONNECTION_WAIT_TIMEOUT: Duration = Duration::from_secs(180);
 const ACCEPT_SLEEP_DUR: Duration = Duration::from_millis(100);
 
-pub struct Server<C: Config>  {
+pub struct Server<C: Config> {
     pool: Mutex<ThreadPool>,
-    config: C
+    config: C,
 }
 
 impl<C: Config> Server<C> {
     pub fn new(config: C, threadpool_size: usize) -> Arc<Server<C>> {
         Arc::new(Server {
             pool: Mutex::new(ThreadPool::new(threadpool_size)),
-            config
+            config,
         })
     }
 
@@ -156,5 +156,4 @@ impl<C: Config> Server<C> {
     //         .new_session(network_connection.try_clone()?)?;
     //     Ok(connect_info)
     // }
-
 }

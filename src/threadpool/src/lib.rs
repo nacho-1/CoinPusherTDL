@@ -15,11 +15,10 @@ type WorkerId = usize;
 
 const THREAD_WAIT_TIMEOUT: Duration = Duration::from_micros(1000); // 0.001s
 
-
 #[derive(Clone)]
 pub struct ThreadPool {
     job_sender: Sender<Job>,
-    _thread_manager_handler: Arc<ManagerHandle>
+    _thread_manager_handler: Arc<ManagerHandle>,
 }
 
 struct ThreadInfo {
@@ -28,14 +27,12 @@ struct ThreadInfo {
     alive_receiver: Receiver<bool>,
 }
 
-
 struct ThreadManager {
     threads: Vec<ThreadInfo>,
     ready_receiver: Receiver<WorkerId>,
     job_receiver: Receiver<Job>,
     ready_sender: Sender<WorkerId>,
 }
-
 
 struct ManagerHandle(Option<JoinHandle<()>>);
 
@@ -134,8 +131,8 @@ impl ThreadPool {
     }
 
     pub fn execute<F>(&self, job: F) -> Result<(), ThreadPoolError>
-        where
-            F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
     {
         self.job_sender.send(Box::new(job))?;
         Ok(())
