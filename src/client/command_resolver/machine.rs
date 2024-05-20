@@ -33,6 +33,7 @@ impl Machine {
     }
 
     // probabilidad de que caigan monedas
+    // ver función Heaviside o escalón
     fn p(&self) -> f64 {
         // stepness
         let k: f64 = 0.02;
