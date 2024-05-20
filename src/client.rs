@@ -2,18 +2,21 @@ use std::error::Error;
 use std::io;
 
 mod command_resolver;
+use command_resolver::CommandResolver;
 
 const INSERT_KEY: char = 't';
 const ASK_KEY: char = 'y';
 const QUIT_KEY: char = 'q';
 
 pub fn run() -> Result<(), Box<dyn Error>> {
+    let mut resolver = CommandResolver::new();
+
     loop {
         let option = read_option()?;
         match option {
-            QUIT_KEY => return handle_quit(),
-            INSERT_KEY => handle_insert()?,
-            ASK_KEY => handle_ask()?,
+            QUIT_KEY => return handle_quit(&resolver),
+            INSERT_KEY => handle_insert(&mut resolver)?,
+            ASK_KEY => handle_ask(&resolver)?,
             other => println!("[{other}] no es una opción válida\n"),
         }
     }
@@ -43,14 +46,14 @@ fn read_option() -> Result<char, Box<dyn Error>> {
     }
 }
 
-fn handle_quit() -> Result<(), Box<dyn Error>> {
-    command_resolver::leave();
+fn handle_quit(resolver: &CommandResolver) -> Result<(), Box<dyn Error>> {
+    resolver.leave();
     println!("Cerrando la aplicación...");
     Ok(())
 }
 
-fn handle_insert() -> Result<(), Box<dyn Error>> {
-    let fell = command_resolver::insert_coin()?;
+fn handle_insert(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
+    let fell = resolver.insert_coin()?;
 
     if fell == 0 {
         println!("No cayeron monedas. Mala suerte.\n");
@@ -61,8 +64,8 @@ fn handle_insert() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn handle_ask() -> Result<(), Box<dyn Error>> {
-    let pool = command_resolver::consult_pool()?;
+fn handle_ask(resolver: &CommandResolver) -> Result<(), Box<dyn Error>> {
+    let pool = resolver.consult_pool()?;
 
     println!("Hay {pool} monedas en la maquina\n");
 

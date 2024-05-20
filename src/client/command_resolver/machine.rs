@@ -1,3 +1,5 @@
+use rand::Rng;
+
 const MACHINE_CAPACITY: u32 = 1000;
 
 pub struct Machine {
@@ -15,6 +17,19 @@ impl Machine {
 
     pub fn get_pool(&self) -> u32 {
         self.pool
+    }
+
+    pub fn insert_coin(&mut self) -> u32 {
+        self.pool += 1;
+
+        let rng: f64 = rand::thread_rng().gen_range(0.0_f64..=1.0_f64);
+
+        if rng < self.p() {
+            self.pool -= 1;
+            1
+        } else {
+            0
+        }
     }
 
     // probabilidad de que caigan monedas
