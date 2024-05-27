@@ -51,6 +51,8 @@ impl Machine {
     fn f(&self, rng: f64) -> u32 {
         let n: f64 = f64::from(self.pool);
 
+        // si bien es una función lineal,
+        // rng tiene como tope p() lo cual genera esa dependencia
         let r = (0.05_f64 * rng * n).ceil();
 
         let r = r as u32;
