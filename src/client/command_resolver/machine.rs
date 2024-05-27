@@ -25,8 +25,9 @@ impl Machine {
         let rng: f64 = rand::thread_rng().gen_range(0.0_f64..=1.0_f64);
 
         if rng < self.p() {
-            self.pool -= 1;
-            1
+            let fell = self.f(rng);
+            self.pool -= fell;
+            fell
         } else {
             0
         }
@@ -44,6 +45,21 @@ impl Machine {
         let n: f64 = f64::from(self.pool);
 
         1.0_f64/(1.0_f64 + (-k * (n - t)).exp())
+    }
+
+    // cantidad de monedas que caen
+    fn f(&self, rng: f64) -> u32 {
+        let n: f64 = f64::from(self.pool);
+
+        let r = (0.05_f64 * rng * n).ceil();
+
+        let r = r as u32;
+
+        if r >= 1 {
+            r
+        } else {
+            1
+        }
     }
 }
 
