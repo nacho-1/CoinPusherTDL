@@ -4,12 +4,14 @@ use std::error::Error;
 mod machine;
 
 pub struct CommandResolver {
-    m: machine::Machine
+    m: machine::Machine,
 }
 
 impl CommandResolver {
     pub fn new() -> CommandResolver {
-        CommandResolver { m: machine::Machine::with(700).unwrap() }
+        CommandResolver {
+            m: machine::Machine::with(700).unwrap(),
+        }
     }
 
     pub fn insert_coin(&mut self) -> Result<u32, Box<dyn Error>> {

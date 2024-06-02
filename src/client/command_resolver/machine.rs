@@ -3,7 +3,7 @@ use rand::Rng;
 const MACHINE_CAPACITY: u32 = 1000;
 
 pub struct Machine {
-    pool: u32
+    pool: u32,
 }
 
 impl Machine {
@@ -44,7 +44,7 @@ impl Machine {
 
         let n: f64 = f64::from(self.pool);
 
-        1.0_f64/(1.0_f64 + (-k * (n - t)).exp())
+        1.0_f64 / (1.0_f64 + (-k * (n - t)).exp())
     }
 
     // cantidad de monedas que caen
@@ -64,7 +64,6 @@ impl Machine {
         }
     }
 }
-
 
 #[cfg(test)]
 mod machine_tests {
