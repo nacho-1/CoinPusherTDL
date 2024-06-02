@@ -13,8 +13,9 @@ pub struct ServerError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ServerErrorKind {
+    ProtocolViolation,
     ClientDisconnected,
-    DumpError,
+    ClientNotFound,
     Timeout,
     PoisonedLock,
     Irrecoverable,

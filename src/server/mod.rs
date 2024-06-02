@@ -3,9 +3,11 @@ use std::net::SocketAddr;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex, RwLock};
 use std::time::Duration;
 use std::{io, thread};
+use std::collections::HashMap;
+use std::io::{Read, Write};
 
 use crate::server::server_controller::ServerController;
 use crate::server::server_error::{ServerError, ServerErrorKind};
@@ -20,6 +22,7 @@ mod server_error;
 mod traits;
 
 pub type ServerResult<T> = Result<T, ServerError>;
+pub type ClientId = usize;
 
 const CONNECTION_WAIT_TIMEOUT: Duration = Duration::from_secs(180);
 const ACCEPT_SLEEP_DUR: Duration = Duration::from_millis(100);
@@ -27,6 +30,7 @@ const ACCEPT_SLEEP_DUR: Duration = Duration::from_millis(100);
 pub struct Server<C: Config> {
     pool: Mutex<ThreadPool>,
     config: C,
+    clients: RwLock<HashMap<ClientId, TcpStream>>
 }
 
 impl<C: Config> Server<C> {
@@ -34,6 +38,7 @@ impl<C: Config> Server<C> {
         Arc::new(Server {
             pool: Mutex::new(ThreadPool::new(threadpool_size)),
             config,
+            clients: RwLock::new(HashMap::new())
         })
     }
 
@@ -114,14 +119,14 @@ impl<C: Config> Server<C> {
         thread_joiner: &mut ThreadJoiner,
     ) -> ServerResult<()> {
         let sv_copy = self.clone();
-        // thread_joiner.spawn(move || {
-        //     sv_copy._run_client(network_connection).unwrap_or_else(|e| {
-        //         if e.kind() != ServerErrorKind::ClientDisconnected
-        //         {
-        //             eprintln!("Unhandled error {}", e);
-        //         }
-        //     });
-        // });
+        thread_joiner.spawn(move || {
+            sv_copy._run_client(network_connection).unwrap_or_else(|e| {
+                if e.kind() != ServerErrorKind::ClientDisconnected
+                {
+                    eprintln!("Unhandled error {}", e);
+                }
+            });
+        });
         Ok(())
     }
 
@@ -131,29 +136,125 @@ impl<C: Config> Server<C> {
         Ok(())
     }
 
-    // fn _run_client(
-    //     self: Arc<Self>,
-    //     mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
-    // ) -> ServerResult<()> {
-    //     match self.connect_client(&mut network_connection) {
-    //         Ok(connect_info) => {
-    //             self.manage_successful_connection(connect_info, network_connection)?
-    //         }
-    //         Err(err) => self.manage_failed_connection(network_connection, err)?,
-    //     };
-    //     Ok(())
+    fn _run_client(
+        self: Arc<Self>,
+        mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
+    ) -> ServerResult<()> {
+        match self.connect_client(&mut network_connection) {
+            Ok(connect_info) => {
+                self.manage_successful_connection(connect_info, network_connection)?
+            }
+            Err(err) => self.manage_failed_connection(network_connection, err)?,
+        };
+        Ok(())
+    }
+
+    fn connect_client(
+        self: &Arc<Self>,
+        network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
+    ) -> ServerResult<ClientId> {
+        println!("Client connecting");
+        let mut clients = self.clients.write()?;
+        let client_id = clients.len();
+        clients.insert(client_id, network_connection.stream().try_clone()?);
+        Ok(client_id)
+    }
+
+    fn manage_successful_connection(
+        self: &Arc<Self>,
+        connect_info: ClientId,
+        mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
+    ) -> ServerResult<()> {
+        println!("Accepted client with ID {}", connect_info);
+        // Returning the ID as a confirmation
+        network_connection.write_all(connect_info.to_string().as_bytes())?;
+        self.client_loop(&connect_info, &mut network_connection).unwrap_or(false);
+        Ok(())
+    }
+
+    fn client_loop(
+        self: &Arc<Self>,
+        client_id: &ClientId,
+        network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
+    ) -> ServerResult<bool> {
+
+        loop {
+            match self.process_packet(network_connection, client_id) {
+                // TODO: keep the loop going according to the received packet
+                Ok(true) => {
+                    continue;
+                }
+                Err(err) => {
+                    if err.kind() != ServerErrorKind::ClientDisconnected {
+                        eprintln!("Unexpected error: {}", err);
+                    }
+                    return Ok(false);
+                }
+            }
+        }
+    }
+
+    // TODO: uncomment this when implementing PacketType and process_packet_given_control_byte function is completed
+    // pub fn process_packet<T: Read>(
+    //     self: &Arc<Self>,
+    //     stream: &mut T,
+    //     client_id: &ClientId,
+    // ) -> ServerResult<PacketType> {
+    //     let mut control_byte_buff = [0u8; 1];
+    //     stream.read_exact(&mut control_byte_buff)?;
+    //     self.process_packet_given_control_byte(control_byte_buff[0], stream, client_id)
     // }
 
-    // fn connect_client(
+    // TODO: implement PacketType, the idea is that the server will be able to process different types of packets (actions)
+    // fn process_packet_given_control_byte<T: Read>(
     //     self: &Arc<Self>,
-    //     network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
-    // ) -> ServerResult<ConnectInfo> {
-    //     println!("Client connecting");
-    //     // TODO: implement saving client info
-    //     let connect_info = self
-    //         .clients_manager
-    //         .write()?
-    //         .new_session(network_connection.try_clone()?)?;
-    //     Ok(connect_info)
+    //     control_byte: u8,
+    //     stream: &mut T,
+    //     id: &ClientId,
+    // ) -> ServerResult<PacketType> {
+    //     let packet_type = PacketType::try_from(control_byte)?;
+    //     match packet_type {
+    //         PacketType::JoinGame => {
+    //             let publish = JoinGame::read_from(stream, control_byte)?;
+    //             self.to_threadpool(|server, id| server.handle_join_game(publish, id), id)?;
+    //         }
+    //         PacketType::AddCoin => {
+    //             let packet = AddCoin::read_from(stream, control_byte)?;
+    //             self.to_threadpool(|server, id| server.handle_add_coin(packet, id), id)?;
+    //         }
+    //         PacketType::Disconnect => {
+    //             let _packet = Disconnect::read_from(stream, control_byte)?;
+    //         }
+    //         _ => {
+    //             return Err(ServerError::new_kind(
+    //                 "Unexpected packet",
+    //                 ServerErrorKind::ProtocolViolation,
+    //             ))
+    //         }
+    //     }
+    //     println!("Processing {}", packet_type);
+    //     Ok(packet_type)
     // }
+
+    fn to_threadpool<F>(self: &Arc<Self>, action: F, id: &ClientId) -> ServerResult<()>
+        where
+            F: FnOnce(Arc<Self>, &ClientId) -> ServerResult<()> + Send + 'static,
+    {
+        let sv_copy = self.clone();
+        let id_copy = id.to_owned();
+        self.pool.lock()?.execute(move || {
+            action(sv_copy, &id_copy).unwrap_or_else(|e| {
+                if e.kind() != ServerErrorKind::ClientNotFound
+                    && e.kind() != ServerErrorKind::ClientDisconnected
+                {
+                    eprintln!("{}", e);
+                }
+            });
+        })?;
+        Ok(())
+    }
+
+
+
+
 }
