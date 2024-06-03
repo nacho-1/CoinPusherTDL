@@ -8,8 +8,38 @@ const INSERT_KEY: char = 't';
 const ASK_KEY: char = 'y';
 const QUIT_KEY: char = 'q';
 
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let mut resolver = CommandResolver::new();
+pub struct ClientConfig {
+    hostname: String,
+    servicename: String,
+}
+
+impl ClientConfig {
+    pub fn build(
+        mut args: impl Iterator<Item = String>,
+    ) -> Result<ClientConfig, &'static str> {
+        // skip first arg
+        args.next();
+
+        let hostname = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No se obtuvo la dirección del servidor"),
+        };
+
+        let servicename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("No se obtuvo el puerto del servidor"),
+        };
+
+        Ok( ClientConfig {
+                hostname,
+                servicename,
+            }
+        )
+    }
+}
+
+pub fn run(config: ClientConfig) -> Result<(), Box<dyn Error>> {
+    let mut resolver = CommandResolver::new(config.hostname, config.servicename)?;
 
     loop {
         let option = read_option()?;
