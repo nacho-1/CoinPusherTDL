@@ -1,7 +1,6 @@
 use std::process;
 use std::env;
 
-//mod server;
 mod client;
 use client::ClientConfig;
 

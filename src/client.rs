@@ -8,12 +8,16 @@ const INSERT_KEY: char = 't';
 const ASK_KEY: char = 'y';
 const QUIT_KEY: char = 'q';
 
+/// Procesador de argumentos del cliente
 pub struct ClientConfig {
     hostname: String,
     servicename: String,
 }
 
 impl ClientConfig {
+
+    /// Crea la instancia.
+    /// Se asume que el primer argumento es el path del ejecutable.
     pub fn build(
         mut args: impl Iterator<Item = String>,
     ) -> Result<ClientConfig, &'static str> {
