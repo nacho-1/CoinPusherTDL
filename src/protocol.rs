@@ -31,9 +31,9 @@ impl Action {
 pub struct Protocol;
 
 impl Protocol {
-    pub fn encode(action: Action, value: String) -> Vec<u8> {
-        let action_char = action.to_char();
-        format!("{}{}", action_char, value).into_bytes()
+    pub fn encode(message: Message) -> Vec<u8> {
+        let action_char = message.action.to_char();
+        format!("{}{}", action_char, message.value).into_bytes()
     }
     
     pub fn decode(bytes: Vec<u8>) -> Message {
