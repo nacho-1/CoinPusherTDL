@@ -1,6 +1,7 @@
 use std::net::TcpStream;
-use std::io::{Read};
+use std::io::{Read, Write};
 use std::str;
+use std::io::Result;
 
 pub struct Message {
     pub action: Action,
@@ -43,12 +44,22 @@ impl Protocol {
         Protocol { stream }
     }
 
-    pub fn encode(message: Message) -> Vec<u8> {
+    pub fn write(&mut self, message: Message) -> Result<()> {
+        let encoded_msg = Protocol::encode(message);
+        return self.stream.write_all(&encoded_msg);
+    }
+
+    pub fn read(&mut self) -> Message {
+        return self.decode()
+    }
+
+
+    fn encode(message: Message) -> Vec<u8> {
         let action_char = message.action.to_char();
-        format!("{}{}", action_char, message.value).into_bytes()
+        return format!("{}{}", action_char, message.value).into_bytes()
     }
     
-    pub fn decode(&mut self) -> Message {
+    fn decode(&mut self) -> Message {
         let mut buffer = Vec::new();
         self.stream.read_to_end(&mut buffer).expect("Error: Cannot read from stream");
         let input = str::from_utf8(&buffer).expect("Invalid input: Cannot convert bytes to UTF-8 string");
@@ -63,7 +74,7 @@ impl Protocol {
         let value = input[1..].to_string();
 
 
-        Message {
+        return Message {
             action,
             value,
         }
