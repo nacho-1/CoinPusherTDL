@@ -33,17 +33,24 @@ impl Action {
     }
 }
 
-pub struct Protocol;
+pub struct Protocol {
+    stream: TcpStream,
+}
 
 impl Protocol {
+
+    pub fn new(stream: TcpStream) -> Self {
+        Protocol { stream }
+    }
+
     pub fn encode(message: Message) -> Vec<u8> {
         let action_char = message.action.to_char();
         format!("{}{}", action_char, message.value).into_bytes()
     }
     
-    pub fn decode(mut stream: TcpStream) -> Message {
+    pub fn decode(&mut self) -> Message {
         let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).expect("Error: Cannot read from stream");
+        self.stream.read_to_end(&mut buffer).expect("Error: Cannot read from stream");
         let input = str::from_utf8(&buffer).expect("Invalid input: Cannot convert bytes to UTF-8 string");
 
         if input.is_empty() { 
