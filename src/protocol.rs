@@ -1,8 +1,13 @@
+use std::net::TcpStream;
+use std::io::{Read};
+use std::str;
+
 pub struct Message {
     pub action: Action,
     pub value: String,
 }
 
+#[derive(Debug)]
 pub enum Action {
     Insert,
     Quit,
@@ -36,10 +41,12 @@ impl Protocol {
         format!("{}{}", action_char, message.value).into_bytes()
     }
     
-    pub fn decode(bytes: Vec<u8>) -> Message {
-        let input = std::str::from_utf8(&bytes).expect("Invalid input: Cannot convert bytes to UTF-8 string");
+    pub fn decode(mut stream: TcpStream) -> Message {
+        let mut buffer = Vec::new();
+        stream.read_to_end(&mut buffer).expect("Error: Cannot read from stream");
+        let input = str::from_utf8(&buffer).expect("Invalid input: Cannot convert bytes to UTF-8 string");
 
-        if input.is_empty() {
+        if input.is_empty() { 
             panic!("Invalid input: String is empty");
         }
 
