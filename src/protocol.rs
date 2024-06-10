@@ -1,82 +1,174 @@
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::str;
-use std::io::Result;
+//use std::error::Error;
+use std::fmt;
 
-pub struct Message {
-    pub action: Action,
-    pub value: String,
+const INSERT_BYTE: char = 't';
+const CONSULT_BYTE: char = 'y';
+const QUIT_BYTE: char = 'q';
+
+const FELL_BYTE: char = 'f';
+const POOL_BYTE: char = 'p';
+
+#[derive(Debug)]
+pub enum ClientMessage {
+    Insert,
+    ConsultPool,
+    Quit,
 }
 
 #[derive(Debug)]
-pub enum Action {
-    Insert,
-    Quit,
-    ConsultPool,
+pub enum ServerMessage {
+    FellCoins(u32),
+    PoolState(u32),
 }
 
-impl Action {
-    fn to_char(&self) -> char {
-        match self {
-            Action::Insert => 't',
-            Action::Quit => 'q',
-            Action::ConsultPool => 'y',
-        }
-    }
-
-    fn from_char(c: char) -> Option<Action> {
-        match c {
-            't' => Some(Action::Insert),
-            'q' => Some(Action::Quit),
-            'y' => Some(Action::ConsultPool),
-            _ => None,
-        }
-    }
-}
-
-pub struct Protocol {
+pub struct StreamToServer {
     stream: TcpStream,
 }
 
-impl Protocol {
-
+impl StreamToServer {
     pub fn new(stream: TcpStream) -> Self {
-        Protocol { stream }
+        StreamToServer { stream }
     }
 
-    pub fn write(&mut self, message: Message) -> Result<()> {
-        let encoded_msg = Protocol::encode(message);
-        return self.stream.write_all(&encoded_msg);
+    pub fn send_message(&mut self, msg: ClientMessage) -> Result<(), ProtocolError> {
+        let encoded_msg = encode(msg);
+        match self.stream.write_all(&encoded_msg) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                let msg = format!("{}", e);
+                Err( ProtocolError { msg } )
+            },
+        }
     }
 
-    pub fn read(&mut self) -> Message {
-        return self.decode()
-    }
+    pub fn recv_message(&mut self) -> Result<ServerMessage, ProtocolError> {
+        let mut buffer = Vec::<u8>::with_capacity(1);
 
-
-    fn encode(message: Message) -> Vec<u8> {
-        let action_char = message.action.to_char();
-        return format!("{}{}", action_char, message.value).into_bytes()
-    }
-    
-    fn decode(&mut self) -> Message {
-        let mut buffer = Vec::new();
-        self.stream.read_to_end(&mut buffer).expect("Error: Cannot read from stream");
-        let input = str::from_utf8(&buffer).expect("Invalid input: Cannot convert bytes to UTF-8 string");
-
-        if input.is_empty() { 
-            panic!("Invalid input: String is empty");
+        if let Err(e) = self.stream.read_exact(&mut buffer) {
+            let msg = format!("{}", e);
+            return Err( ProtocolError { msg } );
         }
 
-        let action_char = input.chars().next().unwrap();
-        let action = Action::from_char(action_char).expect("Invalid input: The action provided is unknown");
+        // Should never panic
+        let msg_byte = char::from(buffer.pop().unwrap());
 
-        let value = input[1..].to_string();
+        match msg_byte {
+            FELL_BYTE => {
+                let mut buffer = Vec::<u8>::with_capacity(5);
 
+                if let Err(e) = self.stream.read_exact(&mut buffer) {
+                    let msg = format!("{}", e);
+                    return Err( ProtocolError { msg } );
+                }
 
-        return Message {
-            action,
-            value,
+                let n = decode_count(&buffer)?;
+
+                Ok(ServerMessage::FellCoins(n))
+            },
+            POOL_BYTE => {
+                let mut buffer = Vec::<u8>::with_capacity(5);
+
+                if let Err(e) = self.stream.read_exact(&mut buffer) {
+                    let msg = format!("{}", e);
+                    return Err( ProtocolError { msg } );
+                }
+
+                let n = decode_count(&buffer)?;
+
+                Ok(ServerMessage::PoolState(n))
+            },
+            c => {
+                let msg = format!("Unknown server message: {}", c);
+                Err( ProtocolError { msg } )
+            }
         }
+    }
+}
+
+fn encode(msg: ClientMessage) -> Vec::<u8> {
+    match msg {
+        ClientMessage::Insert => {
+            format!("{}", INSERT_BYTE).into_bytes()
+        },
+        ClientMessage::ConsultPool => {
+            format!("{}", CONSULT_BYTE).into_bytes()
+        },
+        ClientMessage::Quit => {
+            format!("{}", QUIT_BYTE).into_bytes()
+        },
+    }
+}
+
+fn decode_count(buffer: &Vec::<u8>) -> Result<u32, ProtocolError> {
+    // Seguro hay alguna forma de hacer esto mas lindo
+    match str::from_utf8(buffer) {
+        Ok(s) => {
+            match s.parse::<u32>() {
+                Ok(n) => Ok(n),
+                Err(e) => {
+                    let msg = format!("{}", e);
+                    Err( ProtocolError { msg } )
+                },
+            }
+        },
+        Err(e) => {
+            let msg = format!("{}", e);
+            Err( ProtocolError { msg } )
+        },
+    }
+}
+
+#[derive(Debug)]
+pub struct ProtocolError {
+    msg: String,
+}
+
+impl std::error::Error for ProtocolError {
+    fn description(&self) -> &str {
+        &self.msg
+    }
+}
+
+impl fmt::Display for ProtocolError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
+#[cfg(test)]
+mod protocol_tests {
+    use super::*;
+
+    #[test]
+    fn encode_insert_msg() {
+        let msg = ClientMessage::Insert;
+
+        let encoded_msg = encode(msg);
+        let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
+
+        assert_eq!(encoded_msg, "t");
+    }
+
+    #[test]
+    fn encode_consult_msg() {
+        let msg = ClientMessage::ConsultPool;
+
+        let encoded_msg = encode(msg);
+        let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
+
+        assert_eq!(encoded_msg, "y");
+    }
+
+    #[test]
+    fn encode_quit_msg() {
+        let msg = ClientMessage::Quit;
+
+        let encoded_msg = encode(msg);
+        let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
+
+        assert_eq!(encoded_msg, "q");
     }
 }
