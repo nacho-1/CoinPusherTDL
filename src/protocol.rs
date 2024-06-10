@@ -102,7 +102,9 @@ fn encode(msg: ClientMessage) -> Vec::<u8> {
     }
 }
 
-fn decode_count(buffer: &Vec::<u8>) -> Result<u32, ProtocolError> {
+fn decode_count(buffer: &[u8]) -> Result<u32, ProtocolError> {
+    // Should always be 5 bytes
+    assert_eq!(buffer.len(), 5);
     // Seguro hay alguna forma de hacer esto mas lindo
     match str::from_utf8(buffer) {
         Ok(s) => {
@@ -170,5 +172,23 @@ mod protocol_tests {
         let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
 
         assert_eq!(encoded_msg, "q");
+    }
+
+    #[test]
+    fn decode_counts() {
+        let count_0 = "00000".as_bytes();
+        let count_1 = "00001".as_bytes();
+        let count_max = "99999".as_bytes();
+
+        assert_eq!(decode_count(count_0).unwrap(), 0);
+        assert_eq!(decode_count(count_1).unwrap(), 1);
+        assert_eq!(decode_count(count_max).unwrap(), 99999);
+    }
+
+    #[test]
+    fn decode_non_numeric_slice() {
+        let s = "abcde".as_bytes();
+
+        assert!(decode_count(s).is_err());
     }
 }
