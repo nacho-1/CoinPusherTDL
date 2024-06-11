@@ -88,6 +88,49 @@ impl StreamToServer {
     }
 }
 
+pub struct StreamToClient {
+    stream: TcpStream,
+}
+
+impl StreamToClient {
+    pub fn new(stream: TcpStream) -> Self {
+        StreamToClient { stream }
+    }
+
+    pub fn send_message(&mut self, msg: ServerMessage) -> Result<(), ProtocolError> {
+        let encoded_msg = encode_server_msg(msg)?;
+        match self.stream.write_all(&encoded_msg) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                let msg = format!("{}", e);
+                Err( ProtocolError { msg } )
+            },
+        }
+    }
+
+    pub fn recv_message(&mut self) -> Result<ClientMessage, ProtocolError> {
+        let mut buffer = Vec::<u8>::with_capacity(1);
+
+        if let Err(e) = self.stream.read_exact(&mut buffer) {
+            let msg = format!("{}", e);
+            return Err( ProtocolError { msg } );
+        }
+
+        // Should never panic
+        let msg_byte = char::from(buffer.pop().unwrap());
+
+        match msg_byte {
+            INSERT_BYTE => Ok( ClientMessage::Insert ),
+            CONSULT_BYTE => Ok( ClientMessage::ConsultPool),
+            QUIT_BYTE => Ok( ClientMessage::Quit),
+            c => {
+                let msg = format!("Unknown client message: {}", c);
+                Err( ProtocolError { msg } )
+            },
+        }
+    }
+}
+
 fn encode_client_msg(msg: ClientMessage) -> Vec::<u8> {
     match msg {
         ClientMessage::Insert => {
