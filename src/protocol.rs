@@ -1,7 +1,6 @@
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::str;
-//use std::error::Error;
 use std::fmt;
 
 const INSERT_BYTE: char = 't';
