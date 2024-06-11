@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use std::str;
 //use std::error::Error;
 use std::fmt;
+use std::num::ParseIntError;
 
 const INSERT_BYTE: char = 't';
 const CONSULT_BYTE: char = 'y';
@@ -35,22 +36,15 @@ impl StreamToServer {
 
     pub fn send_message(&mut self, msg: ClientMessage) -> Result<(), ProtocolError> {
         let encoded_msg = encode(msg);
-        match self.stream.write_all(&encoded_msg) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                let msg = format!("{}", e);
-                Err( ProtocolError { msg } )
-            },
-        }
+        self.stream.write_all(&encoded_msg)?;
+
+        Ok(())
     }
 
     pub fn recv_message(&mut self) -> Result<ServerMessage, ProtocolError> {
         let mut buffer = Vec::<u8>::with_capacity(1);
 
-        if let Err(e) = self.stream.read_exact(&mut buffer) {
-            let msg = format!("{}", e);
-            return Err( ProtocolError { msg } );
-        }
+        self.stream.read_exact(&mut buffer)?;
 
         // Should never panic
         let msg_byte = char::from(buffer.pop().unwrap());
@@ -59,10 +53,7 @@ impl StreamToServer {
             FELL_BYTE => {
                 let mut buffer = Vec::<u8>::with_capacity(5);
 
-                if let Err(e) = self.stream.read_exact(&mut buffer) {
-                    let msg = format!("{}", e);
-                    return Err( ProtocolError { msg } );
-                }
+                self.stream.read_exact(&mut buffer)?;
 
                 let n = decode_count(&buffer)?;
 
@@ -71,10 +62,7 @@ impl StreamToServer {
             POOL_BYTE => {
                 let mut buffer = Vec::<u8>::with_capacity(5);
 
-                if let Err(e) = self.stream.read_exact(&mut buffer) {
-                    let msg = format!("{}", e);
-                    return Err( ProtocolError { msg } );
-                }
+                self.stream.read_exact(&mut buffer)?;
 
                 let n = decode_count(&buffer)?;
 
@@ -103,22 +91,8 @@ fn encode(msg: ClientMessage) -> Vec::<u8> {
 }
 
 fn decode_count(buffer: &Vec::<u8>) -> Result<u32, ProtocolError> {
-    // Seguro hay alguna forma de hacer esto mas lindo
-    match str::from_utf8(buffer) {
-        Ok(s) => {
-            match s.parse::<u32>() {
-                Ok(n) => Ok(n),
-                Err(e) => {
-                    let msg = format!("{}", e);
-                    Err( ProtocolError { msg } )
-                },
-            }
-        },
-        Err(e) => {
-            let msg = format!("{}", e);
-            Err( ProtocolError { msg } )
-        },
-    }
+    let n = str::from_utf8(buffer)?.parse::<u32>()?;
+    Ok(n)
 }
 
 #[derive(Debug)]
@@ -137,6 +111,28 @@ impl fmt::Display for ProtocolError {
         write!(f, "{}", self.msg)
     }
 }
+
+//If all the exceptions are handled in the same way we can abstract it in order to prevent code repetition
+//https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types
+impl From<str::Utf8Error> for ProtocolError {
+    fn from(err: str::Utf8Error) -> Self {
+        ProtocolError { msg: format!("{}", err) }
+    }
+}
+
+impl From<ParseIntError> for ProtocolError {
+    fn from(err: ParseIntError) -> Self {
+        ProtocolError { msg: format!("{}", err) }
+    }
+}
+
+impl From<std::io::Error> for ProtocolError {
+    fn from(err: std::io::Error) -> Self {
+        ProtocolError { msg: format!("{}", err) }
+    }
+}
+
+
 
 #[cfg(test)]
 mod protocol_tests {
@@ -171,4 +167,5 @@ mod protocol_tests {
 
         assert_eq!(encoded_msg, "q");
     }
+    
 }
