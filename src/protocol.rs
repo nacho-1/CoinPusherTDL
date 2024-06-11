@@ -102,13 +102,23 @@ fn encode_client_msg(msg: ClientMessage) -> Vec::<u8> {
     }
 }
 
-fn encode_server_msg(msg: ServerMessage) -> Vec::<u8> {
+fn encode_server_msg(msg: ServerMessage) -> Result<Vec::<u8>, ProtocolError> {
     match msg {
         ServerMessage::FellCoins(n) => {
-            format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes()
+            if n > 99999 {
+                let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
+                Err( ProtocolError { msg } )
+            } else {
+                Ok( format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes() )
+            }
         },
         ServerMessage::PoolState(n) => {
-            format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes()
+            if n > 99999 {
+                let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
+                Err( ProtocolError { msg } )
+            } else {
+                Ok( format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes() )
+            }
         },
     }
 }
@@ -205,11 +215,35 @@ mod protocol_tests {
 
     #[test]
     fn encode_fell_msg() {
-        let msg = ServerMessage::FellCoins(1);
+        let msg = ServerMessage::FellCoins(0);
 
-        let encoded_msg = encode_server_msg(msg);
+        let encoded_msg = encode_server_msg(msg).unwrap();
         let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
 
-        assert_eq!(encoded_msg, "f00001");
+        assert_eq!(encoded_msg, "f00000");
+    }
+
+    #[test]
+    fn encode_pool_msg() {
+        let msg = ServerMessage::PoolState(99999);
+
+        let encoded_msg = encode_server_msg(msg).unwrap();
+        let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
+
+        assert_eq!(encoded_msg, "p99999");
+    }
+
+    #[test]
+    fn encode_invalid_fell_msg() {
+        let msg = ServerMessage::FellCoins(100000);
+
+        assert!(encode_server_msg(msg).is_err());
+    }
+
+    #[test]
+    fn encode_invalid_pool_msg() {
+        let msg = ServerMessage::PoolState(100000);
+
+        assert!(encode_server_msg(msg).is_err());
     }
 }
