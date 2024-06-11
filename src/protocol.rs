@@ -34,7 +34,7 @@ impl StreamToServer {
     }
 
     pub fn send_message(&mut self, msg: ClientMessage) -> Result<(), ProtocolError> {
-        let encoded_msg = encode(msg);
+        let encoded_msg = encode_client_msg(msg);
         match self.stream.write_all(&encoded_msg) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -88,7 +88,7 @@ impl StreamToServer {
     }
 }
 
-fn encode(msg: ClientMessage) -> Vec::<u8> {
+fn encode_client_msg(msg: ClientMessage) -> Vec::<u8> {
     match msg {
         ClientMessage::Insert => {
             format!("{}", INSERT_BYTE).into_bytes()
@@ -98,6 +98,17 @@ fn encode(msg: ClientMessage) -> Vec::<u8> {
         },
         ClientMessage::Quit => {
             format!("{}", QUIT_BYTE).into_bytes()
+        },
+    }
+}
+
+fn encode_server_msg(msg: ServerMessage) -> Vec::<u8> {
+    match msg {
+        ServerMessage::FellCoins(n) => {
+            format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes()
+        },
+        ServerMessage::PoolState(n) => {
+            format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes()
         },
     }
 }
@@ -148,7 +159,7 @@ mod protocol_tests {
     fn encode_insert_msg() {
         let msg = ClientMessage::Insert;
 
-        let encoded_msg = encode(msg);
+        let encoded_msg = encode_client_msg(msg);
         let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
 
         assert_eq!(encoded_msg, "t");
@@ -158,7 +169,7 @@ mod protocol_tests {
     fn encode_consult_msg() {
         let msg = ClientMessage::ConsultPool;
 
-        let encoded_msg = encode(msg);
+        let encoded_msg = encode_client_msg(msg);
         let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
 
         assert_eq!(encoded_msg, "y");
@@ -168,7 +179,7 @@ mod protocol_tests {
     fn encode_quit_msg() {
         let msg = ClientMessage::Quit;
 
-        let encoded_msg = encode(msg);
+        let encoded_msg = encode_client_msg(msg);
         let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
 
         assert_eq!(encoded_msg, "q");
@@ -190,5 +201,15 @@ mod protocol_tests {
         let s = "abcde".as_bytes();
 
         assert!(decode_count(s).is_err());
+    }
+
+    #[test]
+    fn encode_fell_msg() {
+        let msg = ServerMessage::FellCoins(1);
+
+        let encoded_msg = encode_server_msg(msg);
+        let encoded_msg = str::from_utf8(&encoded_msg).unwrap();
+
+        assert_eq!(encoded_msg, "f00001");
     }
 }
