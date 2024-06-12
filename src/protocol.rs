@@ -86,22 +86,14 @@ impl StreamToClient {
 
     pub fn send_message(&mut self, msg: ServerMessage) -> Result<(), ProtocolError> {
         let encoded_msg = encode_server_msg(msg)?;
-        match self.stream.write_all(&encoded_msg) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                let msg = format!("{}", e);
-                Err( ProtocolError { msg } )
-            },
-        }
+        self.stream.write_all(&encoded_msg)?;
+        Ok(())
     }
 
     pub fn recv_message(&mut self) -> Result<ClientMessage, ProtocolError> {
         let mut buffer = Vec::<u8>::with_capacity(1);
 
-        if let Err(e) = self.stream.read_exact(&mut buffer) {
-            let msg = format!("{}", e);
-            return Err( ProtocolError { msg } );
-        }
+        self.stream.read_exact(&mut buffer)? 
 
         // Should never panic
         let msg_byte = char::from(buffer.pop().unwrap());
