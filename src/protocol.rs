@@ -93,7 +93,7 @@ impl StreamToClient {
     pub fn recv_message(&mut self) -> Result<ClientMessage, ProtocolError> {
         let mut buffer = Vec::<u8>::with_capacity(1);
 
-        self.stream.read_exact(&mut buffer)? 
+        self.stream.read_exact(&mut buffer)?;
 
         // Should never panic
         let msg_byte = char::from(buffer.pop().unwrap());
