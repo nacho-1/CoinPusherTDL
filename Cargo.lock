@@ -9,13 +9,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "coinpusher"
+name = "client"
 version = "0.1.0"
 dependencies = [
  "rand",
- "thread_joiner",
- "threadpool",
 ]
+
+[[package]]
+name = "common"
+version = "0.1.0"
 
 [[package]]
 name = "getrandom"
@@ -71,11 +73,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "thread_joiner"
-version = "0.1.0"
-
-[[package]]
-name = "threadpool"
+name = "server"
 version = "0.1.0"
 
 [[package]]
