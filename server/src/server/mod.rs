@@ -53,7 +53,7 @@ impl<C: Config> Server<C> {
                 if let Err(err) = self.server_loop(shutdown_bool, started_sender) {
                     eprintln!(
                         "Unexpected server error: {} - Try shutting down the server and restarting it",
-                        err.to_string()
+                        err
                     )
                 }
             })?;

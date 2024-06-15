@@ -71,7 +71,7 @@ impl<S, I> NetworkConnection<S, I> {
     {
         let stream = self.stream.try_clone().map_err(|e| {
             ServerError::new_kind(
-                &format!("Error clonando stream de network_connection: {}", e),
+                format!("Error while cloning network_connection stream: {}", e),
                 ServerErrorKind::Irrecoverable,
             )
         })?;

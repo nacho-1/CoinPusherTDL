@@ -55,22 +55,22 @@ impl From<io::Error> for ServerError {
 
 impl<T> From<PoisonError<T>> for ServerError {
     fn from(err: PoisonError<T>) -> Self {
-        ServerError::new_kind(&err.to_string(), ServerErrorKind::PoisonedLock)
+        ServerError::new_kind(err.to_string(), ServerErrorKind::PoisonedLock)
     }
 }
 
 impl From<SendError<()>> for ServerError {
     fn from(err: SendError<()>) -> Self {
         eprintln!("Sender error: {}", err);
-        ServerError::new_msg(&err.to_string())
+        ServerError::new_msg(err.to_string())
     }
 }
 
 impl From<ThreadPoolError> for ServerError {
     fn from(err: ThreadPoolError) -> Self {
-        eprintln!("Threadpool error: {}", err);
+        eprintln!("ThreadPool error: {}", err);
         ServerError::new_kind(
-            &format!("ThreadPoolError: {}", err.to_string()),
+            format!("ThreadPoolError: {}", err),
             ServerErrorKind::Irrecoverable,
         )
     }
