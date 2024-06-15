@@ -3,7 +3,7 @@ use std::{
     sync::{mpsc::SendError, PoisonError},
 };
 
-use threadpool::ThreadPoolError;
+use common::thread_pool_error::ThreadPoolError;
 
 #[derive(Debug)]
 pub struct ServerError {

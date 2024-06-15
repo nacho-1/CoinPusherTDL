@@ -76,16 +76,12 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "common",
  "thread_joiner",
- "threadpool",
 ]
 
 [[package]]
 name = "thread_joiner"
-version = "0.1.0"
-
-[[package]]
-name = "threadpool"
 version = "0.1.0"
 
 [[package]]

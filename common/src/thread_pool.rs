@@ -1,3 +1,4 @@
+use crate::thread_pool_error::ThreadPoolError;
 use std::{
     sync::{
         mpsc::{self, channel, Receiver, Sender},
@@ -7,10 +8,7 @@ use std::{
     time::Duration,
 };
 
-pub use threadpool_error::ThreadPoolError;
-mod threadpool_error;
-
-type Job = Box<dyn FnOnce() + Send + 'static>;
+pub type Job = Box<dyn FnOnce() + Send + 'static>;
 type WorkerId = usize;
 
 const THREAD_WAIT_TIMEOUT: Duration = Duration::from_micros(1000); // 0.001s
