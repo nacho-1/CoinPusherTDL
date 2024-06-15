@@ -32,6 +32,6 @@ pub fn init(config_path: &str) {
 }
 
 fn main() {
-    let config_path: String = get_config_path(Some("./resources/config.txt".to_string()));
+    let config_path: String = get_config_path(Some("server/resources/config.txt".to_string()));
     init(&config_path);
 }
