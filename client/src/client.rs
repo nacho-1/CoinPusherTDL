@@ -15,12 +15,9 @@ pub struct ClientConfig {
 }
 
 impl ClientConfig {
-
     /// Crea la instancia.
     /// Se asume que el primer argumento es el path del ejecutable.
-    pub fn build(
-        mut args: impl Iterator<Item = String>,
-    ) -> Result<ClientConfig, &'static str> {
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<ClientConfig, &'static str> {
         // skip first arg
         args.next();
 
@@ -34,11 +31,10 @@ impl ClientConfig {
             None => return Err("No se obtuvo el puerto del servidor"),
         };
 
-        Ok( ClientConfig {
-                hostname,
-                servicename,
-            }
-        )
+        Ok(ClientConfig {
+            hostname,
+            servicename,
+        })
     }
 }
 

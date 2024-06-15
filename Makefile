@@ -1,4 +1,4 @@
-TARGETS = src/server src/thread_joiner src/threadpool src/
+TARGETS = server common client
 
 all: fmt test clippy;
 

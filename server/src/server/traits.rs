@@ -51,5 +51,5 @@ impl Close for TcpStream {
 pub trait Config: Send + Sync + Clone + 'static {
     fn port(&self) -> u16;
 
-    fn ip(&self) -> &str;
+    fn host(&self) -> &str;
 }
