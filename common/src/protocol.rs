@@ -1,8 +1,8 @@
-use std::net::TcpStream;
-use std::io::{Read, Write};
-use std::str;
 use std::fmt;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::num::ParseIntError;
+use std::str;
 
 const INSERT_BYTE: char = 't';
 const CONSULT_BYTE: char = 'y';
@@ -57,7 +57,7 @@ impl StreamToServer {
                 let n = decode_count(&buffer)?;
 
                 Ok(ServerMessage::FellCoins(n))
-            },
+            }
             POOL_BYTE => {
                 let mut buffer = Vec::<u8>::with_capacity(5);
 
@@ -66,10 +66,10 @@ impl StreamToServer {
                 let n = decode_count(&buffer)?;
 
                 Ok(ServerMessage::PoolState(n))
-            },
+            }
             c => {
                 let msg = format!("Unknown server message: {}", c);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             }
         }
     }
@@ -99,49 +99,43 @@ impl StreamToClient {
         let msg_byte = char::from(buffer.pop().unwrap());
 
         match msg_byte {
-            INSERT_BYTE => Ok( ClientMessage::Insert ),
-            CONSULT_BYTE => Ok( ClientMessage::ConsultPool),
-            QUIT_BYTE => Ok( ClientMessage::Quit),
+            INSERT_BYTE => Ok(ClientMessage::Insert),
+            CONSULT_BYTE => Ok(ClientMessage::ConsultPool),
+            QUIT_BYTE => Ok(ClientMessage::Quit),
             c => {
                 let msg = format!("Unknown client message: {}", c);
-                Err( ProtocolError { msg } )
-            },
+                Err(ProtocolError { msg })
+            }
         }
     }
 }
 
-fn encode_client_msg(msg: ClientMessage) -> Vec::<u8> {
+fn encode_client_msg(msg: ClientMessage) -> Vec<u8> {
     match msg {
-        ClientMessage::Insert => {
-            format!("{}", INSERT_BYTE).into_bytes()
-        },
-        ClientMessage::ConsultPool => {
-            format!("{}", CONSULT_BYTE).into_bytes()
-        },
-        ClientMessage::Quit => {
-            format!("{}", QUIT_BYTE).into_bytes()
-        },
+        ClientMessage::Insert => format!("{}", INSERT_BYTE).into_bytes(),
+        ClientMessage::ConsultPool => format!("{}", CONSULT_BYTE).into_bytes(),
+        ClientMessage::Quit => format!("{}", QUIT_BYTE).into_bytes(),
     }
 }
 
-fn encode_server_msg(msg: ServerMessage) -> Result<Vec::<u8>, ProtocolError> {
+fn encode_server_msg(msg: ServerMessage) -> Result<Vec<u8>, ProtocolError> {
     match msg {
         ServerMessage::FellCoins(n) => {
             if n > 99999 {
                 let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             } else {
-                Ok( format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes() )
+                Ok(format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes())
             }
-        },
+        }
         ServerMessage::PoolState(n) => {
             if n > 99999 {
                 let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             } else {
-                Ok( format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes() )
+                Ok(format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes())
             }
-        },
+        }
     }
 }
 
@@ -173,23 +167,27 @@ impl fmt::Display for ProtocolError {
 //https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types
 impl From<str::Utf8Error> for ProtocolError {
     fn from(err: str::Utf8Error) -> Self {
-        ProtocolError { msg: format!("{}", err) }
+        ProtocolError {
+            msg: format!("{}", err),
+        }
     }
 }
 
 impl From<ParseIntError> for ProtocolError {
     fn from(err: ParseIntError) -> Self {
-        ProtocolError { msg: format!("{}", err) }
+        ProtocolError {
+            msg: format!("{}", err),
+        }
     }
 }
 
 impl From<std::io::Error> for ProtocolError {
     fn from(err: std::io::Error) -> Self {
-        ProtocolError { msg: format!("{}", err) }
+        ProtocolError {
+            msg: format!("{}", err),
+        }
     }
 }
-
-
 
 #[cfg(test)]
 mod protocol_tests {
