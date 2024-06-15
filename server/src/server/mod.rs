@@ -1,4 +1,6 @@
 use crate::server::network_connection::NetworkConnection;
+use std::collections::HashMap;
+use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -6,8 +8,6 @@ use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex, RwLock};
 use std::time::Duration;
 use std::{io, thread};
-use std::collections::HashMap;
-use std::io::{Read, Write};
 
 use crate::server::server_controller::ServerController;
 use crate::server::server_error::{ServerError, ServerErrorKind};
@@ -19,7 +19,7 @@ use threadpool::ThreadPool;
 mod network_connection;
 mod server_controller;
 mod server_error;
-mod traits;
+pub(crate) mod traits;
 
 pub type ServerResult<T> = Result<T, ServerError>;
 pub type ClientId = usize;
@@ -30,7 +30,7 @@ const ACCEPT_SLEEP_DUR: Duration = Duration::from_millis(100);
 pub struct Server<C: Config> {
     pool: Mutex<ThreadPool>,
     config: C,
-    clients: RwLock<HashMap<ClientId, TcpStream>>
+    clients: RwLock<HashMap<ClientId, TcpStream>>,
 }
 
 impl<C: Config> Server<C> {
@@ -38,7 +38,7 @@ impl<C: Config> Server<C> {
         Arc::new(Server {
             pool: Mutex::new(ThreadPool::new(threadpool_size)),
             config,
-            clients: RwLock::new(HashMap::new())
+            clients: RwLock::new(HashMap::new()),
         })
     }
 
@@ -89,7 +89,7 @@ impl<C: Config> Server<C> {
         shutdown_bool: Arc<AtomicBool>,
         started_sender: Sender<()>,
     ) -> ServerResult<()> {
-        let listener = TcpListener::bind(format!("{}:{}", self.config.ip(), self.config.port()))?;
+        let listener = TcpListener::bind(format!("{}:{}", self.config.host(), self.config.port()))?;
         started_sender.send(())?;
 
         let mut thread_joiner = ThreadJoiner::new();
@@ -121,8 +121,7 @@ impl<C: Config> Server<C> {
         let sv_copy = self.clone();
         thread_joiner.spawn(move || {
             sv_copy._run_client(network_connection).unwrap_or_else(|e| {
-                if e.kind() != ServerErrorKind::ClientDisconnected
-                {
+                if e.kind() != ServerErrorKind::ClientDisconnected {
                     eprintln!("Unhandled error {}", e);
                 }
             });
@@ -144,7 +143,8 @@ impl<C: Config> Server<C> {
             Ok(connect_info) => {
                 self.manage_successful_connection(connect_info, network_connection)?
             }
-            Err(err) => self.manage_failed_connection(network_connection, err)?,
+            //Err(err) => self.manage_failed_connection(network_connection, err)?,
+            Err(err) => eprintln!("Error: {}", err),
         };
         Ok(())
     }
@@ -168,7 +168,8 @@ impl<C: Config> Server<C> {
         println!("Accepted client with ID {}", connect_info);
         // Returning the ID as a confirmation
         network_connection.write_all(connect_info.to_string().as_bytes())?;
-        self.client_loop(&connect_info, &mut network_connection).unwrap_or(false);
+        self.client_loop(&connect_info, &mut network_connection)
+            .unwrap_or(false);
         Ok(())
     }
 
@@ -177,17 +178,25 @@ impl<C: Config> Server<C> {
         client_id: &ClientId,
         network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
     ) -> ServerResult<bool> {
-
         loop {
-            match self.process_packet(network_connection, client_id) {
-                // TODO: keep the loop going according to the received packet
-                Ok(true) => {
+            //     match self.process_packet(network_connection, client_id) {
+            //         // TODO: keep the loop going according to the received packet
+            //         Ok(true) => {
+            //             continue;
+            //         }
+            //         Err(err) => {
+            //             if err.kind() != ServerErrorKind::ClientDisconnected {
+            //                 eprintln!("Unexpected error: {}", err);
+            //             }
+            //             return Ok(false);
+            //         }
+            //     }
+            // }
+            match 1 {
+                1 => {
                     continue;
                 }
-                Err(err) => {
-                    if err.kind() != ServerErrorKind::ClientDisconnected {
-                        eprintln!("Unexpected error: {}", err);
-                    }
+                _ => {
                     return Ok(false);
                 }
             }
@@ -237,8 +246,8 @@ impl<C: Config> Server<C> {
     // }
 
     fn to_threadpool<F>(self: &Arc<Self>, action: F, id: &ClientId) -> ServerResult<()>
-        where
-            F: FnOnce(Arc<Self>, &ClientId) -> ServerResult<()> + Send + 'static,
+    where
+        F: FnOnce(Arc<Self>, &ClientId) -> ServerResult<()> + Send + 'static,
     {
         let sv_copy = self.clone();
         let id_copy = id.to_owned();
@@ -253,8 +262,4 @@ impl<C: Config> Server<C> {
         })?;
         Ok(())
     }
-
-
-
-
 }
