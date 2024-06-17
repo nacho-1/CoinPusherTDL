@@ -1,5 +1,5 @@
-use std::process;
 use std::env;
+use std::process;
 
 mod client;
 use client::ClientConfig;

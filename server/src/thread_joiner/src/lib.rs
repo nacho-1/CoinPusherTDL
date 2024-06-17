@@ -52,7 +52,6 @@ impl ThreadJoiner {
         self.finished_sender.send(Message::Started(handle)).unwrap();
     }
 
-    /// Executes the loop that joins the threads
     fn join_loop(receiver: Receiver<Message>) {
         let mut handles = HashMap::new();
         for message in receiver {

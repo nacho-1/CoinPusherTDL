@@ -1,6 +1,5 @@
+use crate::thread_pool::Job;
 use std::{error::Error, fmt::Display, sync::mpsc::SendError};
-
-use super::Job;
 
 #[derive(Debug)]
 pub struct ThreadPoolError {

@@ -1,7 +1,8 @@
-use std::net::TcpStream;
-use std::io::{Read, Write};
-use std::str;
 use std::fmt;
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::num::ParseIntError;
+use std::str;
 
 const INSERT_BYTE: char = 't';
 const CONSULT_BYTE: char = 'y';
@@ -34,54 +35,42 @@ impl StreamToServer {
 
     pub fn send_message(&mut self, msg: ClientMessage) -> Result<(), ProtocolError> {
         let encoded_msg = encode_client_msg(msg);
-        match self.stream.write_all(&encoded_msg) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                let msg = format!("{}", e);
-                Err( ProtocolError { msg } )
-            },
-        }
+
+        self.stream.write_all(&encoded_msg)?;
+
+        Ok(())
     }
 
     pub fn recv_message(&mut self) -> Result<ServerMessage, ProtocolError> {
-        let mut buffer = Vec::<u8>::with_capacity(1);
+        let mut buffer = vec![0u8; 1];
 
-        if let Err(e) = self.stream.read_exact(&mut buffer) {
-            let msg = format!("{}", e);
-            return Err( ProtocolError { msg } );
-        }
+        self.stream.read_exact(&mut buffer)?;
 
         // Should never panic
         let msg_byte = char::from(buffer.pop().unwrap());
 
         match msg_byte {
             FELL_BYTE => {
-                let mut buffer = Vec::<u8>::with_capacity(5);
+                let mut buffer = vec![0u8; 5];
 
-                if let Err(e) = self.stream.read_exact(&mut buffer) {
-                    let msg = format!("{}", e);
-                    return Err( ProtocolError { msg } );
-                }
+                self.stream.read_exact(&mut buffer)?;
 
                 let n = decode_count(&buffer)?;
 
                 Ok(ServerMessage::FellCoins(n))
-            },
+            }
             POOL_BYTE => {
-                let mut buffer = Vec::<u8>::with_capacity(5);
+                let mut buffer = vec![0u8; 5];
 
-                if let Err(e) = self.stream.read_exact(&mut buffer) {
-                    let msg = format!("{}", e);
-                    return Err( ProtocolError { msg } );
-                }
+                self.stream.read_exact(&mut buffer)?;
 
                 let n = decode_count(&buffer)?;
 
                 Ok(ServerMessage::PoolState(n))
-            },
+            }
             c => {
                 let msg = format!("Unknown server message: {}", c);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             }
         }
     }
@@ -98,92 +87,65 @@ impl StreamToClient {
 
     pub fn send_message(&mut self, msg: ServerMessage) -> Result<(), ProtocolError> {
         let encoded_msg = encode_server_msg(msg)?;
-        match self.stream.write_all(&encoded_msg) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                let msg = format!("{}", e);
-                Err( ProtocolError { msg } )
-            },
-        }
+
+        self.stream.write_all(&encoded_msg)?;
+        Ok(())
     }
 
     pub fn recv_message(&mut self) -> Result<ClientMessage, ProtocolError> {
-        let mut buffer = Vec::<u8>::with_capacity(1);
+        let mut buffer = vec![0u8; 1];
 
-        if let Err(e) = self.stream.read_exact(&mut buffer) {
-            let msg = format!("{}", e);
-            return Err( ProtocolError { msg } );
-        }
+        self.stream.read_exact(&mut buffer)?;
 
         // Should never panic
         let msg_byte = char::from(buffer.pop().unwrap());
 
         match msg_byte {
-            INSERT_BYTE => Ok( ClientMessage::Insert ),
-            CONSULT_BYTE => Ok( ClientMessage::ConsultPool),
-            QUIT_BYTE => Ok( ClientMessage::Quit),
+            INSERT_BYTE => Ok(ClientMessage::Insert),
+            CONSULT_BYTE => Ok(ClientMessage::ConsultPool),
+            QUIT_BYTE => Ok(ClientMessage::Quit),
             c => {
                 let msg = format!("Unknown client message: {}", c);
-                Err( ProtocolError { msg } )
-            },
+                Err(ProtocolError { msg })
+            }
         }
     }
 }
 
-fn encode_client_msg(msg: ClientMessage) -> Vec::<u8> {
+fn encode_client_msg(msg: ClientMessage) -> Vec<u8> {
     match msg {
-        ClientMessage::Insert => {
-            format!("{}", INSERT_BYTE).into_bytes()
-        },
-        ClientMessage::ConsultPool => {
-            format!("{}", CONSULT_BYTE).into_bytes()
-        },
-        ClientMessage::Quit => {
-            format!("{}", QUIT_BYTE).into_bytes()
-        },
+        ClientMessage::Insert => format!("{}", INSERT_BYTE).into_bytes(),
+        ClientMessage::ConsultPool => format!("{}", CONSULT_BYTE).into_bytes(),
+        ClientMessage::Quit => format!("{}", QUIT_BYTE).into_bytes(),
     }
 }
 
-fn encode_server_msg(msg: ServerMessage) -> Result<Vec::<u8>, ProtocolError> {
+fn encode_server_msg(msg: ServerMessage) -> Result<Vec<u8>, ProtocolError> {
     match msg {
         ServerMessage::FellCoins(n) => {
             if n > 99999 {
                 let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             } else {
-                Ok( format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes() )
+                Ok(format!("{}{:0>5}", FELL_BYTE, n.to_string()).into_bytes())
             }
-        },
+        }
         ServerMessage::PoolState(n) => {
             if n > 99999 {
                 let msg = format!("n ({}) too big. Can't have more than 5 digits", n);
-                Err( ProtocolError { msg } )
+                Err(ProtocolError { msg })
             } else {
-                Ok( format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes() )
+                Ok(format!("{}{:0>5}", POOL_BYTE, n.to_string()).into_bytes())
             }
-        },
+        }
     }
 }
 
 fn decode_count(buffer: &[u8]) -> Result<u32, ProtocolError> {
     // Should always be 5 bytes
     assert_eq!(buffer.len(), 5);
-    // Seguro hay alguna forma de hacer esto mas lindo
-    match str::from_utf8(buffer) {
-        Ok(s) => {
-            match s.parse::<u32>() {
-                Ok(n) => Ok(n),
-                Err(e) => {
-                    let msg = format!("{}", e);
-                    Err( ProtocolError { msg } )
-                },
-            }
-        },
-        Err(e) => {
-            let msg = format!("{}", e);
-            Err( ProtocolError { msg } )
-        },
-    }
+    let n = str::from_utf8(buffer)?.parse::<u32>()?;
+    Ok(n)
 }
 
 #[derive(Debug)]
@@ -200,6 +162,32 @@ impl std::error::Error for ProtocolError {
 impl fmt::Display for ProtocolError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.msg)
+    }
+}
+
+//If all the exceptions are handled in the same way we can abstract it in order to prevent code repetition
+//https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types
+impl From<str::Utf8Error> for ProtocolError {
+    fn from(err: str::Utf8Error) -> Self {
+        ProtocolError {
+            msg: format!("{}", err),
+        }
+    }
+}
+
+impl From<ParseIntError> for ProtocolError {
+    fn from(err: ParseIntError) -> Self {
+        ProtocolError {
+            msg: format!("{}", err),
+        }
+    }
+}
+
+impl From<std::io::Error> for ProtocolError {
+    fn from(err: std::io::Error) -> Self {
+        ProtocolError {
+            msg: format!("{}", err),
+        }
     }
 }
 
