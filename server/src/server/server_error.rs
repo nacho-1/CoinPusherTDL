@@ -1,3 +1,4 @@
+use common::protocol::ProtocolError;
 use std::{
     fmt, io,
     sync::{mpsc::SendError, PoisonError},
@@ -71,6 +72,12 @@ impl From<ThreadPoolError> for ServerError {
             format!("ThreadPoolError: {}", err),
             ServerErrorKind::Irrecoverable,
         )
+    }
+}
+
+impl From<ProtocolError> for ServerError {
+    fn from(err: ProtocolError) -> Self {
+        ServerError::new_kind(err.to_string(), ServerErrorKind::ClientDisconnected)
     }
 }
 

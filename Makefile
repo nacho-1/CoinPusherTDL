@@ -9,4 +9,4 @@ run_server:
 	cargo build && cargo run -p server
 
 run_client:
-	cargo build && cargo run -p client
+	cargo build && cargo run -p client localhost 1883

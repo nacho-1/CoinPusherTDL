@@ -135,7 +135,9 @@ impl<C: Config> Server<C> {
         self: Arc<Self>,
         mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
     ) -> ServerResult<()> {
+        println!("New connection from: {:?}", network_connection.id());
         self.client_loop(&mut network_connection).unwrap_or(false);
+        println!("Connection closed: {:?}", network_connection.id());
         Ok(())
     }
 
@@ -152,11 +154,12 @@ impl<C: Config> Server<C> {
                         Some(response) => stream_to_client
                             .send_message(response)
                             .expect("Protocol error"),
-                        _ => return Ok(true),
+                        None => return Ok(true),
                     }
                 }
                 Err(err) => {
                     eprintln!("Unexpected error: {}", err);
+                    return Err(ServerError::from(err));
                 }
             }
         }

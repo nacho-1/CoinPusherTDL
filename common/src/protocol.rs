@@ -42,7 +42,6 @@ impl StreamToServer {
     }
 
     pub fn recv_message(&mut self) -> Result<ServerMessage, ProtocolError> {
-        //let mut buffer = Vec::<u8>::with_capacity(1);
         let mut buffer = vec![0u8; 1];
 
         self.stream.read_exact(&mut buffer)?;
@@ -52,7 +51,6 @@ impl StreamToServer {
 
         match msg_byte {
             FELL_BYTE => {
-                //let mut buffer = Vec::<u8>::with_capacity(5);
                 let mut buffer = vec![0u8; 5];
 
                 self.stream.read_exact(&mut buffer)?;
@@ -96,7 +94,6 @@ impl StreamToClient {
     }
 
     pub fn recv_message(&mut self) -> Result<ClientMessage, ProtocolError> {
-        //let mut buffer = Vec::<u8>::with_capacity(1);
         let mut buffer = vec![0u8; 1];
 
         self.stream.read_exact(&mut buffer)?;
