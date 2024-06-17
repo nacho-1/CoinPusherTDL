@@ -4,6 +4,7 @@ use std::env;
 use std::io::Read;
 
 mod config;
+mod machine;
 mod server;
 
 fn get_config_path(default_path: Option<String>) -> String {

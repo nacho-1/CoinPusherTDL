@@ -12,7 +12,9 @@ use std::{io, thread};
 use crate::server::server_controller::ServerController;
 use crate::server::server_error::{ServerError, ServerErrorKind};
 
+use crate::machine::Machine;
 use crate::server::traits::Config;
+use common::protocol::{ClientMessage, ProtocolError, ServerMessage, StreamToClient};
 use common::thread_pool::ThreadPool;
 use thread_joiner::ThreadJoiner;
 
@@ -31,6 +33,7 @@ pub struct Server<C: Config> {
     pool: Mutex<ThreadPool>,
     config: C,
     clients: RwLock<HashMap<ClientId, TcpStream>>,
+    coin_machine: Mutex<Machine>,
 }
 
 impl<C: Config> Server<C> {
@@ -39,6 +42,7 @@ impl<C: Config> Server<C> {
             pool: Mutex::new(ThreadPool::new(threadpool_size)),
             config,
             clients: RwLock::new(HashMap::new()),
+            coin_machine: Mutex::new(Machine::with(200).unwrap()),
         })
     }
 
@@ -139,111 +143,46 @@ impl<C: Config> Server<C> {
         self: Arc<Self>,
         mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
     ) -> ServerResult<()> {
-        match self.connect_client(&mut network_connection) {
-            Ok(connect_info) => {
-                self.manage_successful_connection(connect_info, network_connection)?
-            }
-            //Err(err) => self.manage_failed_connection(network_connection, err)?,
-            Err(err) => eprintln!("Error: {}", err),
-        };
-        Ok(())
-    }
-
-    fn connect_client(
-        self: &Arc<Self>,
-        network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
-    ) -> ServerResult<ClientId> {
-        println!("Client connecting");
-        let mut clients = self.clients.write()?;
-        let client_id = clients.len();
-        clients.insert(client_id, network_connection.stream().try_clone()?);
-        Ok(client_id)
-    }
-
-    fn manage_successful_connection(
-        self: &Arc<Self>,
-        connect_info: ClientId,
-        mut network_connection: NetworkConnection<TcpStream, SocketAddr>,
-    ) -> ServerResult<()> {
-        println!("Accepted client with ID {}", connect_info);
-        // Returning the ID as a confirmation
-        network_connection.write_all(connect_info.to_string().as_bytes())?;
-        self.client_loop(&connect_info, &mut network_connection)
-            .unwrap_or(false);
+        self.client_loop(&mut network_connection).unwrap_or(false);
         Ok(())
     }
 
     fn client_loop(
         self: &Arc<Self>,
-        client_id: &ClientId,
         network_connection: &mut NetworkConnection<TcpStream, SocketAddr>,
     ) -> ServerResult<bool> {
+        let mut stream_to_client = StreamToClient::new(network_connection.stream().try_clone()?);
         loop {
-            //     match self.process_packet(network_connection, client_id) {
-            //         // TODO: keep the loop going according to the received packet
-            //         Ok(true) => {
-            //             continue;
-            //         }
-            //         Err(err) => {
-            //             if err.kind() != ServerErrorKind::ClientDisconnected {
-            //                 eprintln!("Unexpected error: {}", err);
-            //             }
-            //             return Ok(false);
-            //         }
-            //     }
-            // }
-            match 1 {
-                1 => {
-                    continue;
+            match stream_to_client.recv_message() {
+                Ok(client_message) => {
+                    let response = self.process_message(client_message);
+                    match response {
+                        Some(response) => stream_to_client
+                            .send_message(response)
+                            .expect("Protocol error"),
+                        _ => return Ok(true),
+                    }
                 }
-                _ => {
-                    return Ok(false);
+                Err(err) => {
+                    eprintln!("Unexpected error: {}", err);
                 }
             }
         }
     }
 
-    // TODO: uncomment this when implementing PacketType and process_packet_given_control_byte function is completed
-    // pub fn process_packet<T: Read>(
-    //     self: &Arc<Self>,
-    //     stream: &mut T,
-    //     client_id: &ClientId,
-    // ) -> ServerResult<PacketType> {
-    //     let mut control_byte_buff = [0u8; 1];
-    //     stream.read_exact(&mut control_byte_buff)?;
-    //     self.process_packet_given_control_byte(control_byte_buff[0], stream, client_id)
-    // }
-
-    // TODO: implement PacketType, the idea is that the server will be able to process different types of packets (actions)
-    // fn process_packet_given_control_byte<T: Read>(
-    //     self: &Arc<Self>,
-    //     control_byte: u8,
-    //     stream: &mut T,
-    //     id: &ClientId,
-    // ) -> ServerResult<PacketType> {
-    //     let packet_type = PacketType::try_from(control_byte)?;
-    //     match packet_type {
-    //         PacketType::JoinGame => {
-    //             let publish = JoinGame::read_from(stream, control_byte)?;
-    //             self.to_threadpool(|server, id| server.handle_join_game(publish, id), id)?;
-    //         }
-    //         PacketType::AddCoin => {
-    //             let packet = AddCoin::read_from(stream, control_byte)?;
-    //             self.to_threadpool(|server, id| server.handle_add_coin(packet, id), id)?;
-    //         }
-    //         PacketType::Disconnect => {
-    //             let _packet = Disconnect::read_from(stream, control_byte)?;
-    //         }
-    //         _ => {
-    //             return Err(ServerError::new_kind(
-    //                 "Unexpected packet",
-    //                 ServerErrorKind::ProtocolViolation,
-    //             ))
-    //         }
-    //     }
-    //     println!("Processing {}", packet_type);
-    //     Ok(packet_type)
-    // }
+    fn process_message(self: &Arc<Self>, client_message: ClientMessage) -> Option<ServerMessage> {
+        match client_message {
+            ClientMessage::Insert => {
+                let fell_coins = self.coin_machine.lock().ok()?.insert_coin();
+                Some(ServerMessage::FellCoins(fell_coins))
+            }
+            ClientMessage::ConsultPool => {
+                let coins = self.coin_machine.lock().ok()?.get_pool();
+                Some(ServerMessage::PoolState(coins))
+            }
+            ClientMessage::Quit => None,
+        }
+    }
 
     fn to_threadpool<F>(self: &Arc<Self>, action: F, id: &ClientId) -> ServerResult<()>
     where
