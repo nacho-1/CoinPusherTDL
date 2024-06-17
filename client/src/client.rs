@@ -44,9 +44,9 @@ pub fn run(config: ClientConfig) -> Result<(), Box<dyn Error>> {
     loop {
         let option = read_option()?;
         match option {
-            QUIT_KEY => return handle_quit(&resolver),
+            QUIT_KEY => return handle_quit(&mut resolver),
             INSERT_KEY => handle_insert(&mut resolver)?,
-            ASK_KEY => handle_ask(&resolver)?,
+            ASK_KEY => handle_ask(&mut resolver)?,
             other => println!("[{other}] no es una opción válida\n"),
         }
     }
@@ -76,7 +76,7 @@ fn read_option() -> Result<char, Box<dyn Error>> {
     }
 }
 
-fn handle_quit(resolver: &CommandResolver) -> Result<(), Box<dyn Error>> {
+fn handle_quit(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     resolver.leave();
     println!("Cerrando la aplicación...");
     Ok(())
@@ -94,7 +94,7 @@ fn handle_insert(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn handle_ask(resolver: &CommandResolver) -> Result<(), Box<dyn Error>> {
+fn handle_ask(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     let pool = resolver.consult_pool()?;
 
     println!("Hay {pool} monedas en la maquina\n");
