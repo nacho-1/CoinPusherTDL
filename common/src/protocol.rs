@@ -60,7 +60,6 @@ impl StreamToServer {
                 Ok(ServerMessage::FellCoins(n))
             }
             POOL_BYTE => {
-                //let mut buffer = Vec::<u8>::with_capacity(5);
                 let mut buffer = vec![0u8; 5];
 
                 self.stream.read_exact(&mut buffer)?;
