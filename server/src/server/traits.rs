@@ -54,4 +54,6 @@ pub trait Config: Send + Sync + Clone + 'static {
     fn port(&self) -> u16;
 
     fn host(&self) -> &str;
+
+    fn initial_coins_count(&self) -> u32;
 }

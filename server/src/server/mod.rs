@@ -33,8 +33,8 @@ pub struct Server<C: Config> {
 impl<C: Config> Server<C> {
     pub fn new(config: C) -> Arc<Server<C>> {
         Arc::new(Server {
+            coin_machine: Mutex::new(Machine::with(config.initial_coins_count()).unwrap()),
             config,
-            coin_machine: Mutex::new(Machine::with(200).unwrap()),
         })
     }
 
@@ -126,8 +126,7 @@ impl<C: Config> Server<C> {
     }
 
     fn shutdown(self: &Arc<Self>) -> ServerResult<()> {
-        println!("Shutting down server");
-        // TODO: implement shutdown
+        println!("Shutting down server...");
         Ok(())
     }
 

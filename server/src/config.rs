@@ -10,10 +10,12 @@ use crate::server::traits::Config;
 pub struct FileConfig {
     port: u16,
     host: String,
+    initial_coins_count: u32,
 }
 
 const PORT_KEY: &str = "port";
 const HOST_KEY: &str = "host";
+const COINS_KEY: &str = "initial_coins_count";
 
 const SEPARATOR: &str = "=";
 
@@ -39,6 +41,7 @@ impl FileConfig {
         Some(FileConfig {
             port: config.remove(PORT_KEY)?.parse().ok()?,
             host: config.remove(HOST_KEY)?,
+            initial_coins_count: config.remove(COINS_KEY)?.parse().ok()?,
         })
     }
 }
@@ -50,6 +53,10 @@ impl Config for FileConfig {
 
     fn host(&self) -> &str {
         &self.host
+    }
+
+    fn initial_coins_count(&self) -> u32 {
+        self.initial_coins_count
     }
 }
 
@@ -64,31 +71,36 @@ mod tests {
     fn test_valid_file() {
         let cursor = Cursor::new(
             "port=8080
-                    host=localhost",
+                    host=localhost
+                    initial_coins_count=200",
         );
 
         let config = FileConfig::new_from_file(cursor).unwrap();
         assert_eq!(config.port(), 8080);
         assert_eq!(config.host(), "localhost");
+        assert_eq!(config.initial_coins_count(), 200)
     }
 
     #[test]
     fn test_valid_file_with_whitespace() {
         let cursor = Cursor::new(
             "port=8080
-                    host=localhost",
+                    host=localhost
+                    initial_coins_count=200  ",
         );
 
         let config = FileConfig::new_from_file(cursor).unwrap();
         assert_eq!(config.port(), 8080);
         assert_eq!(config.host(), "localhost");
+        assert_eq!(config.initial_coins_count(), 200)
     }
 
     #[test]
     fn test_invalid_key() {
         let cursor = Cursor::new(
             "invalid_key=8080
-host=localhost",
+host=localhost
+initial_coins_count=200",
         );
 
         assert!(FileConfig::new_from_file(cursor).is_none());
@@ -98,7 +110,8 @@ host=localhost",
     fn test_invalid_value() {
         let cursor = Cursor::new(
             "port=WWWW
-host=localhost",
+host=localhost
+initial_coins_count=200",
         );
 
         assert!(FileConfig::new_from_file(cursor).is_none());
