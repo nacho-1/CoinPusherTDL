@@ -21,8 +21,7 @@ fn get_config_path(default_path: Option<String>) -> String {
 pub fn init(config_path: &str) {
     let config = FileConfig::new(config_path).expect("Error while reading config file");
 
-    let threadpool_size = 8;
-    let server = Server::new(config, threadpool_size);
+    let server = Server::new(config);
     let controller = server.run().expect("Error while running server");
 
     println!("Press [ENTER] to stop the server");

@@ -18,6 +18,7 @@ impl<S, I> NetworkConnection<S, I> {
     pub fn stream(&self) -> &S {
         &self.stream
     }
+    #[allow(dead_code)]
     pub fn stream_mut(&mut self) -> &mut S {
         &mut self.stream
     }
@@ -57,6 +58,7 @@ impl<S, I> NetworkConnection<S, I> {
         Self { id, stream }
     }
 
+    #[allow(dead_code)]
     pub fn close(&mut self) -> io::Result<()>
     where
         S: Close,
@@ -64,6 +66,7 @@ impl<S, I> NetworkConnection<S, I> {
         self.stream.close()
     }
 
+    #[allow(dead_code)]
     pub fn try_clone(&self) -> ServerResult<Self>
     where
         I: Clone + Copy,

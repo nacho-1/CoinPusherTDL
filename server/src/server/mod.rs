@@ -1,11 +1,9 @@
 use crate::server::network_connection::NetworkConnection;
-use std::collections::HashMap;
-use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc, Mutex, RwLock};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 use std::{io, thread};
 
@@ -14,8 +12,7 @@ use crate::server::server_error::{ServerError, ServerErrorKind};
 
 use crate::machine::Machine;
 use crate::server::traits::Config;
-use common::protocol::{ClientMessage, ProtocolError, ServerMessage, StreamToClient};
-use common::thread_pool::ThreadPool;
+use common::protocol::{ClientMessage, ServerMessage, StreamToClient};
 use thread_joiner::ThreadJoiner;
 
 mod network_connection;
@@ -24,24 +21,19 @@ mod server_error;
 pub(crate) mod traits;
 
 pub type ServerResult<T> = Result<T, ServerError>;
-pub type ClientId = usize;
 
 const CONNECTION_WAIT_TIMEOUT: Duration = Duration::from_secs(180);
 const ACCEPT_SLEEP_DUR: Duration = Duration::from_millis(100);
 
 pub struct Server<C: Config> {
-    pool: Mutex<ThreadPool>,
     config: C,
-    clients: RwLock<HashMap<ClientId, TcpStream>>,
     coin_machine: Mutex<Machine>,
 }
 
 impl<C: Config> Server<C> {
-    pub fn new(config: C, threadpool_size: usize) -> Arc<Server<C>> {
+    pub fn new(config: C) -> Arc<Server<C>> {
         Arc::new(Server {
-            pool: Mutex::new(ThreadPool::new(threadpool_size)),
             config,
-            clients: RwLock::new(HashMap::new()),
             coin_machine: Mutex::new(Machine::with(200).unwrap()),
         })
     }
@@ -182,23 +174,5 @@ impl<C: Config> Server<C> {
             }
             ClientMessage::Quit => None,
         }
-    }
-
-    fn to_threadpool<F>(self: &Arc<Self>, action: F, id: &ClientId) -> ServerResult<()>
-    where
-        F: FnOnce(Arc<Self>, &ClientId) -> ServerResult<()> + Send + 'static,
-    {
-        let sv_copy = self.clone();
-        let id_copy = id.to_owned();
-        self.pool.lock()?.execute(move || {
-            action(sv_copy, &id_copy).unwrap_or_else(|e| {
-                if e.kind() != ServerErrorKind::ClientNotFound
-                    && e.kind() != ServerErrorKind::ClientDisconnected
-                {
-                    eprintln!("{}", e);
-                }
-            });
-        })?;
-        Ok(())
     }
 }

@@ -8,6 +8,7 @@ pub trait Close {
     fn close(&mut self) -> io::Result<()>;
 }
 
+#[allow(dead_code)]
 pub trait TryClone {
     fn try_clone(&self) -> io::Result<Self>
     where
@@ -20,6 +21,7 @@ pub trait Interrupt {
     fn sleep(&mut self) -> io::Result<()>;
 }
 
+#[allow(dead_code)]
 impl TryClone for TcpStream {
     fn try_clone(&self) -> io::Result<Self>
     where

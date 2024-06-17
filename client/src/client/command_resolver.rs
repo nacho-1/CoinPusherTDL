@@ -1,11 +1,7 @@
 use std::error::Error;
 use std::net::TcpStream;
 
-use common::protocol::{
-    StreamToServer,
-    ClientMessage,
-    ServerMessage,
-};
+use common::protocol::{ClientMessage, ServerMessage, StreamToServer};
 
 // TODO: sacar esto despues
 //#[allow(dead_code)]
@@ -15,17 +11,13 @@ pub struct CommandResolver {
 
 impl CommandResolver {
     pub fn new(hostname: String, servicename: String) -> Result<CommandResolver, Box<dyn Error>> {
-        dbg!(&hostname);
-        dbg!(&servicename);
         let mut addr = hostname.clone();
-        addr.push_str(":");
+        addr.push(':');
         addr.push_str(&servicename);
 
-        let tcpstream = TcpStream::connect(addr)?;
-        let stream = StreamToServer::new(tcpstream);
-        Ok(CommandResolver {
-            stream,
-        })
+        let tcp_stream = TcpStream::connect(addr)?;
+        let stream = StreamToServer::new(tcp_stream);
+        Ok(CommandResolver { stream })
     }
 
     pub fn insert_coin(&mut self) -> Result<u32, Box<dyn Error>> {
