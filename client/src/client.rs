@@ -23,12 +23,12 @@ impl ClientConfig {
 
         let hostname = match args.next() {
             Some(arg) => arg,
-            None => return Err("No se obtuvo la dirección del servidor"),
+            None => return Err("Could not get the hostname of the server"),
         };
 
         let servicename = match args.next() {
             Some(arg) => arg,
-            None => return Err("No se obtuvo el puerto del servidor"),
+            None => return Err("Could not get the servicename of the server"),
         };
 
         Ok(ClientConfig {
@@ -47,17 +47,17 @@ pub fn run(config: ClientConfig) -> Result<(), Box<dyn Error>> {
             QUIT_KEY => return handle_quit(&mut resolver),
             INSERT_KEY => handle_insert(&mut resolver)?,
             ASK_KEY => handle_ask(&mut resolver)?,
-            other => println!("[{other}] no es una opción válida\n"),
+            other => println!("[{other}] is not a valid option\n"),
         }
     }
 }
 
 fn read_option() -> Result<char, Box<dyn Error>> {
     loop {
-        println!("Ingrese una accion:");
-        println!(" {INSERT_KEY} : Ingresar moneda");
-        println!(" {ASK_KEY} : Consultar cantidad");
-        println!(" {QUIT_KEY} : Salir");
+        println!("Choose an action:");
+        println!(" {INSERT_KEY} : Insert coin");
+        println!(" {ASK_KEY} : Check coins");
+        println!(" {QUIT_KEY} : Quit");
 
         let mut input = String::new();
 
@@ -66,7 +66,7 @@ fn read_option() -> Result<char, Box<dyn Error>> {
         let trimmed_input = input.trim();
 
         if trimmed_input.len() != 1 {
-            println!("Ingrese solamente un caracter\n");
+            println!("Only one character is allowed\n");
             continue;
         }
 
@@ -78,7 +78,7 @@ fn read_option() -> Result<char, Box<dyn Error>> {
 
 fn handle_quit(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     resolver.leave();
-    println!("Cerrando la aplicación...");
+    println!("Closing the application...");
     Ok(())
 }
 
@@ -86,9 +86,9 @@ fn handle_insert(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     let fell = resolver.insert_coin()?;
 
     if fell == 0 {
-        println!("No cayeron monedas. Mala suerte.\n");
+        println!("No coins fell. Bad luck.\n");
     } else {
-        println!("Felicidades! Ganaste {fell} monedas!\n");
+        println!("Congrats! You won {fell} coins!\n");
     }
 
     Ok(())
@@ -97,7 +97,7 @@ fn handle_insert(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
 fn handle_ask(resolver: &mut CommandResolver) -> Result<(), Box<dyn Error>> {
     let pool = resolver.consult_pool()?;
 
-    println!("Hay {pool} monedas en la maquina\n");
+    println!("There are {pool} coins in the machine\n");
 
     Ok(())
 }
