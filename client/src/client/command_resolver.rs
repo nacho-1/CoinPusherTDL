@@ -3,8 +3,6 @@ use std::net::TcpStream;
 
 use common::protocol::{ClientMessage, ServerMessage, StreamToServer};
 
-// TODO: sacar esto despues
-//#[allow(dead_code)]
 pub struct CommandResolver {
     stream: StreamToServer,
 }
@@ -45,7 +43,7 @@ impl CommandResolver {
     }
 
     pub fn leave(&mut self) {
-        println!("Desconectandose del servidor...");
+        println!("Disconnecting from the server...");
 
         let _ = self.stream.send_message(ClientMessage::Quit);
     }
